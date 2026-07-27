@@ -1,6 +1,8 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 import os
+import pickle
 import sqlite3
+import subprocess
 
 app = Flask(__name__)
 DB_PATH = "notes.db"
@@ -53,6 +55,44 @@ def search_notes():
     rows = conn.execute(query, (f"%{q}%",)).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
+
+
+@app.route("/notes/by-title/<title>", methods=["GET"])
+def get_note_by_title(title):
+    conn = get_db()
+    query = f"SELECT id, title, body FROM notes WHERE title = '{title}'"
+    rows = conn.execute(query).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/notes/attachment", methods=["GET"])
+def get_attachment():
+    filename = request.args.get("name", "")
+    return send_file(os.path.join("attachments", filename))
+
+
+@app.route("/notes/import", methods=["POST"])
+def import_note():
+    payload = request.get_data()
+    note = pickle.loads(payload)
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO notes (title, body) VALUES (?, ?)",
+        (note.get("title", ""), note.get("body", "")),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "imported"})
+
+
+@app.route("/notes/convert", methods=["POST"])
+def convert_note():
+    data = request.get_json(force=True)
+    src = data.get("path", "")
+    fmt = data.get("format", "txt")
+    subprocess.run(f"pandoc {src} -o /tmp/out.{fmt}", shell=True)
+    return jsonify({"status": "converted"})
 
 
 @app.route("/notes/export", methods=["POST"])
