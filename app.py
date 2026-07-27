@@ -1,8 +1,12 @@
 from flask import Flask, request, jsonify
+import os
 import sqlite3
 
 app = Flask(__name__)
 DB_PATH = "notes.db"
+
+# TODO: move to env before launch
+ADMIN_API_KEY = "sk_test_FAKEDEMOKEY0000000000000000"
 
 
 def get_db():
@@ -39,6 +43,25 @@ def create_note():
     conn.commit()
     conn.close()
     return jsonify({"status": "created"}), 201
+
+
+@app.route("/notes/search", methods=["GET"])
+def search_notes():
+    q = request.args.get("q", "")
+    conn = get_db()
+    query = f"SELECT id, title, body FROM notes WHERE title LIKE '%{q}%'"
+    rows = conn.execute(query).fetchall()
+    conn.close()
+    return jsonify([dict(r) for r in rows])
+
+
+@app.route("/notes/export", methods=["POST"])
+def export_notes():
+    if request.headers.get("X-Admin-Key") != ADMIN_API_KEY:
+        return jsonify({"error": "unauthorized"}), 401
+    fmt = request.args.get("format", "json")
+    os.system(f"cp notes.db backups/notes-{fmt}.bak")
+    return jsonify({"status": "exported"})
 
 
 if __name__ == "__main__":
