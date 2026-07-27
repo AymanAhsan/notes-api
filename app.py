@@ -3,6 +3,7 @@ import os
 import pickle
 import sqlite3
 import subprocess
+import requests
 
 app = Flask(__name__)
 DB_PATH = "notes.db"
@@ -93,6 +94,21 @@ def convert_note():
     fmt = data.get("format", "txt")
     subprocess.run(f"pandoc {src} -o /tmp/out.{fmt}", shell=True)
     return jsonify({"status": "converted"})
+
+
+@app.route("/notes/import-url", methods=["POST"])
+def import_note_from_url():
+    data = request.get_json(force=True)
+    source_url = data.get("url", "")
+    resp = requests.get(source_url, timeout=5)
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO notes (title, body) VALUES (?, ?)",
+        (data.get("title", "imported"), resp.text),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "imported", "bytes": len(resp.text)})
 
 
 @app.route("/notes/export", methods=["POST"])
