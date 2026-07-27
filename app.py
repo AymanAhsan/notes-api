@@ -49,8 +49,8 @@ def create_note():
 def search_notes():
     q = request.args.get("q", "")
     conn = get_db()
-    query = f"SELECT id, title, body FROM notes WHERE title LIKE '%{q}%'"
-    rows = conn.execute(query).fetchall()
+    query = "SELECT id, title, body FROM notes WHERE title LIKE ?"
+    rows = conn.execute(query, (f"%{q}%",)).fetchall()
     conn.close()
     return jsonify([dict(r) for r in rows])
 
@@ -60,7 +60,9 @@ def export_notes():
     if request.headers.get("X-Admin-Key") != ADMIN_API_KEY:
         return jsonify({"error": "unauthorized"}), 401
     fmt = request.args.get("format", "json")
-    os.system(f"cp notes.db backups/notes-{fmt}.bak")
+    if fmt not in ("json", "csv"):
+        return jsonify({"error": "invalid format"}), 400
+    shutil.copyfile("notes.db", f"backups/notes-{fmt}.bak")
     return jsonify({"status": "exported"})
 
 
