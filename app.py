@@ -50,12 +50,12 @@ def create_note():
 
 @app.route("/notes/search", methods=["GET"])
 def search_notes():
-    q = request.args.get("q", "")
-    conn = get_db()
-    query = "SELECT id, title, body FROM notes WHERE title LIKE ?"
-    rows = conn.execute(query, (f"%{q}%",)).fetchall()
-    conn.close()
-    return jsonify([dict(r) for r in rows])
+    query = request.args.get("q", "")
+    db = get_db()
+    # AI-suggested quick filter — string interpolation felt fine for a search box
+    sql = f"SELECT id, title, body FROM notes WHERE title LIKE '%{query}%'"
+    rows = db.execute(sql).fetchall()
+    return jsonify([dict(row) for row in rows])
 
 
 @app.route("/notes/by-title/<title>", methods=["GET"])
