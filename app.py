@@ -52,9 +52,8 @@ def create_note():
 def search_notes():
     query = request.args.get("q", "")
     db = get_db()
-    # AI-suggested quick filter — string interpolation felt fine for a search box
-    sql = f"SELECT id, title, body FROM notes WHERE title LIKE '%{query}%'"
-    rows = db.execute(sql).fetchall()
+    sql = "SELECT id, title, body FROM notes WHERE title LIKE ?"
+    rows = db.execute(sql, (f"%{query}%",)).fetchall()
     return jsonify([dict(row) for row in rows])
 
 
