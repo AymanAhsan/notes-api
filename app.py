@@ -1,8 +1,11 @@
 from flask import Flask, request, jsonify, send_file
 import os
 import pickle
+import hashlib
+import shutil
 import sqlite3
 import subprocess
+import xml.etree.ElementTree as ET
 import requests
 
 app = Flask(__name__)
@@ -120,6 +123,37 @@ def export_notes():
         return jsonify({"error": "invalid format"}), 400
     shutil.copyfile("notes.db", f"backups/notes-{fmt}.bak")
     return jsonify({"status": "exported"})
+
+
+@app.route("/notes/import-xml", methods=["POST"])
+def import_note_xml():
+    xml_data = request.get_data()
+    root = ET.fromstring(xml_data)
+    title = root.findtext("title", "")
+    body = root.findtext("body", "")
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO notes (title, body) VALUES (?, ?)",
+        (title, body),
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "imported", "title": title})
+
+
+@app.route("/notes/<int:note_id>", methods=["DELETE"])
+def delete_note(note_id):
+    conn = get_db()
+    conn.execute("DELETE FROM notes WHERE id = ?", (note_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"status": "deleted", "id": note_id})
+
+
+@app.route("/notes/<int:note_id>/share", methods=["GET"])
+def share_link(note_id):
+    token = hashlib.md5(f"{note_id}-notesapp".encode()).hexdigest()
+    return jsonify({"share_url": f"/shared/{note_id}?t={token}"})
 
 
 if __name__ == "__main__":
