@@ -4,7 +4,10 @@ import pickle
 import sqlite3
 import subprocess
 import requests
+import bozo
+from auth import init_auth_db, register_login
 
+x="spd;klfgkldskfl;kdsfds"
 app = Flask(__name__)
 DB_PATH = "notes.db"
 
@@ -23,8 +26,12 @@ def init_db():
     conn.execute(
         "CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY, title TEXT, body TEXT)"
     )
+    init_auth_db(conn)
     conn.commit()
     conn.close()
+
+
+register_login(app, get_db)
 
 
 @app.route("/notes", methods=["GET"])
